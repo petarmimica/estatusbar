@@ -241,7 +241,7 @@ estatusbar.first.last <- function(private, frac, expo, smallf = 1e-10) {
     num.entries <- length(private$fracs)
 
     # Estimate the total time (use a small value to avoid division by zero)
-    tot <- private$expired / max(c(smallf, private$fracs[num.entries]))^expo
+    tot <- private$measured[num.entries] / max(c(smallf, private$fracs[num.entries]))^expo
 
     # Return the prediction for frac
     return(tot * frac^expo)
