@@ -1,0 +1,17 @@
+Package: estatusbar
+Type: Package
+Title: Register Task Progress, Display Statusbar, Estimate Time of Completion
+Version: 0.5.0
+Author: Petar Mimica
+Maintainer: Petar Mimica <petar.mimica@gmail.com>
+Description: This is an R port of a Fortran module that was used 
+ in the astrophysical codes SPEV and MRGENESIS. The user can register the task completion
+ fraction as it progresses and display a progress/status bar. The package uses several 
+ algorithms to estimate the time of completion.
+License: MIT
+Encoding: UTF-8
+LazyData: true
+RoxygenNote: 6.0.1
+Imports:
+    R6,
+    lubridate
