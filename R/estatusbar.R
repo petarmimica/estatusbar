@@ -3,7 +3,7 @@
 #' This is an R port of a Fortran module that was used in the astrophysical codes SPEV and MRGENESIS.
 #'
 #' @section Initialization:
-#' An R6 object is initalized sing \code{estatusbar$new()} with a no arguments. It should be called by the user when the task starts.
+#' An R6 object is initalized sing \code{estatusbar$new()} with an optional argument - the size of the fittng window. It should be called by the user when the task starts.
 #'
 #' @section Adding new entries:
 #' As the task progresses, the user can call the function \code{add} to register the fraction of the task that has been completed. The routine \code{add} has only one argument, the fraction (between 0 and 1) that is complete at current time.
@@ -39,7 +39,8 @@ estatusbar <-
 
             public = list (
 
-                initialize = function() {
+                initialize = function(win.size = 5) {
+                    private$win.size = win.size
                     estatusbar.zero(self, private)
                 },
                 add = function(fraction) {
@@ -56,20 +57,23 @@ estatusbar <-
                     if (num.entries > 1) {
                         # add predictions to the array
                         new.pred <- array(data = 0, c(num.algs, 1))
-                        new.pred[1, 1] <- estatusbar.polynomial(private, fraction, 5)
-                        new.pred[2, 1] <- estatusbar.log(private, fraction, 5)
+                        new.pred[1, 1] <- estatusbar.polynomial(private, fraction, private$win.size)
+                        new.pred[2, 1] <- estatusbar.log(private, fraction, private$win.size)
 
                         private$predicted <- cbind(private$predicted, new.pred)
-
+                        
+                        # define the interval where the algorithms are tested
+                        test.int <- max(c(1, num.entries - private$win.size)):num.entries
+                        
                         # compute the sum of square difference for each algorithm
                         private$sqdiff <- sapply(1:num.algs, function(i) {
-                            1e0 / max(c(sum((private$measured[1:num.entries] - private$predicted[i, 1:num.entries])^2), 1e-10))
+                            1e0 / max(c(sum((private$measured[test.int] - private$predicted[i, test.int])^2), 1e-10))
                         })
 
                         # compute the final predictions
                         final.pred <- array(data = 0, c(num.algs))
-                        final.pred[1] <- estatusbar.polynomial(private, 1e0, 5)
-                        final.pred[2] <- estatusbar.log(private, 1e0, 5)
+                        final.pred[1] <- estatusbar.polynomial(private, 1e0, private$win.size)
+                        final.pred[2] <- estatusbar.log(private, 1e0, private$win.size)
 
                         # compute the average prediction, using sqdiff as weights
                         private$prediction <- sum(private$sqdiff * final.pred) / sum(private$sqdiff)
@@ -171,6 +175,7 @@ estatusbar <-
             ),
 
             private = list (
+                win.size = 5, # the fitting window
                 fracs = 0e0, # fraction of work done vector
                 sqdiff = array(data = 0, c(2, 1)), # square of prediction differences
                 measured = 0e0, # measured time
