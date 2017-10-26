@@ -222,6 +222,16 @@ estatusbar.polynomial <- function(private, frac, win) {
   # predict the time at frac
   pdf$times <- predict(fit, pdf)
   
+  # if the prediction is negative, fallback to linear
+  if (pdf$times[1] < 0) {
+    fit <- lm(times ~ fracs, data = df)
+    pdf$times <- predict(fit, pdf)
+    # if the prediction is still negative, set to 0
+    if (pdf$times[1] < 0) {
+      pdf$times <- 0
+    }
+  }
+
   return(pdf$times[1])
 }
 
