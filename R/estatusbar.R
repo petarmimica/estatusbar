@@ -192,57 +192,75 @@ estatusbar.zero <- function(self, private) {
     self
 }
 
-
-# This estimator uses last "win" entries to predict the next one. It performs a linear fit.
-estatusbar.linear.window <- function(private, frac, win) {
-
-    num.entries <- length(private$fracs)
-    realwin <- min(c(win, num.entries)) # the real window may be smaller than win
-
-    # create a data frame to perform linear regression
-    df <- data.frame(fracs = private$fracs[(num.entries - realwin):(num.entries)], times = private$measured[(num.entries - realwin):(num.entries)])
-
-    # linear regression
+# Polynomial fit
+estatusbar.polynomial <- function(private, frac, win) {
+  
+  num.entries <- length(private$fracs)
+  realwin <- min(c(win, num.entries)) # the real window may be smaller than win
+  
+  # check if we can use the parabola or have to fallback to linear fit
+  if (realwin < 4) {
+    par <- FALSE
+  } else {
+    par <- TRUE
+  }
+  
+  # create a data frame to perform regression
+  df <- data.frame(fracs = private$fracs[(num.entries - realwin + 1):(num.entries)], times = private$measured[(num.entries - realwin + 1):(num.entries)])
+  
+  # regression
+  if (par) {
+    fit <- lm(times ~ fracs + I(fracs^2), data = df)
+  } else {
     fit <- lm(times ~ fracs, data = df)
-
-    # create a data frame for predicting
-    pdf <- data.frame(fracs = c(frac))
-
-    # predict the time at frac
-    pdf$times <- predict(fit, pdf)
-
-    return(pdf$times[1])
+  }
+  
+  # create a data frame for predicting
+  pdf <- data.frame(fracs = c(frac))
+  
+  # predict the time at frac
+  pdf$times <- predict(fit, pdf)
+  
+  return(pdf$times[1])
 }
 
-# This estimator performs a full linear fit
-estatusbar.linear<- function(private, frac) {
-
-    # create a data frame to perform a linear regression (logarithmic)
-    df <- data.frame(fracs = private$fracs, times = private$measured)
-
-    # linear regression
+# Log-parabolic fit
+estatusbar.log <- function(private, frac, win) {
+  
+  num.entries <- length(private$fracs)
+  realwin <- min(c(win, num.entries)) # the real window may be smaller than win
+  
+  # fallback to estatusbar.polynomial if there are not enough points
+  if (realwin < 3) {
+    return(estatusbar.polynomial(private, frac, win))
+  }
+  
+  realwin <- realwin - 1
+  
+  # check if we can use the parabola or have to fallback to linear fit
+  if (realwin < 4) {
+    par <- FALSE
+  } else {
+    par <- TRUE
+  }
+  
+  # ln(y) = A + B * ln(x) + C * ln(x)^2
+  
+  # create a data frame to perform regression
+  df <- data.frame(fracs = log(private$fracs[(num.entries - realwin + 1):(num.entries)]), times = log(private$measured[(num.entries - realwin + 1):(num.entries)]))
+  
+  # regression
+  if (par) {
+    fit <- lm(times ~ fracs + I(fracs^2), data = df)
+  } else {
     fit <- lm(times ~ fracs, data = df)
-
-    # create a data frame for predicting
-    pdf <- data.frame(fracs = c(frac))
-
-    # predict the time at frac
-    pdf$times <- predict(fit, pdf)
-
-    return(pdf$times[1])
-}
-
-# This simple estimator takes the last known entry and assumes that the time increases as a power of fraction:
-# time(frac) = tot * frac^expo
-#
-# where tot is the total time estimated by substituting the data for the last entry into the previous equation:
-# tot = time(last) / frac(last)^expo
-estatusbar.first.last <- function(private, frac, expo, smallf = 1e-10) {
-    num.entries <- length(private$fracs)
-
-    # Estimate the total time (use a small value to avoid division by zero)
-    tot <- private$measured[num.entries] / max(c(smallf, private$fracs[num.entries]))^expo
-
-    # Return the prediction for frac
-    return(tot * frac^expo)
+  }
+  
+  # create a data frame for predicting
+  pdf <- data.frame(fracs = log(c(frac)))
+  
+  # predict the time at frac
+  pdf$times <- predict(fit, pdf)
+  
+  return(exp(pdf$times[1]))
 }
