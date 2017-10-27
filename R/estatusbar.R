@@ -68,7 +68,7 @@ estatusbar <-
                         private$predicted <- cbind(private$predicted, new.pred)
                         
                         # define the interval where the algorithms are tested
-                        test.int <- max(c(1, num.entries - private$win.size)):num.entries
+                        test.int <- 1:num.entries
                         
                         # compute the sum of square difference for each algorithm
                         private$sqdiff <- sapply(1:num.algs, function(i) {
