@@ -45,7 +45,7 @@ estatusbar <-
                 },
                 add = function(fraction) {
                     # hard coded number of algorithms
-                    num.algs <- 2
+                    num.algs <- 4
 
                     # get current time
                     cur <- as.numeric(lubridate::now())
@@ -59,6 +59,11 @@ estatusbar <-
                         new.pred <- array(data = 0, c(num.algs, 1))
                         new.pred[1, 1] <- estatusbar.polynomial(private, fraction, private$win.size)
                         new.pred[2, 1] <- estatusbar.log(private, fraction, private$win.size)
+                        new.pred[3, 1] <- estatusbar.polynomial(private, fraction, num.entries)
+                        new.pred[4, 1] <- estatusbar.log(private, fraction, num.entries)
+                        new.pred[5, 1] <- estatusbar.first.last(private, fraction, 1)
+                        new.pred[6, 1] <- estatusbar.first.last(private, fraction, 2)
+                        
 
                         private$predicted <- cbind(private$predicted, new.pred)
                         
@@ -74,6 +79,10 @@ estatusbar <-
                         final.pred <- array(data = 0, c(num.algs))
                         final.pred[1] <- estatusbar.polynomial(private, 1e0, private$win.size)
                         final.pred[2] <- estatusbar.log(private, 1e0, private$win.size)
+                        final.pred[3] <- estatusbar.polynomial(private, 1e0, num.entries)
+                        final.pred[4] <- estatusbar.log(private, 1e0, num.entries)
+                        final.pred[5] <- estatusbar.first.last(private, 1e0, 1)
+                        final.pred[6] <- estatusbar.first.last(private, 1e0, 2)
 
                         # compute the average prediction, using sqdiff as weights
                         private$prediction <- sum(private$sqdiff * final.pred) / sum(private$sqdiff)
@@ -177,9 +186,9 @@ estatusbar <-
             private = list (
                 win.size = 5, # the fitting window
                 fracs = 0e0, # fraction of work done vector
-                sqdiff = array(data = 0, c(2, 1)), # square of prediction differences
+                sqdiff = array(data = 0, c(6, 1)), # square of prediction differences
                 measured = 0e0, # measured time
-                predicted = array(data = 0, c(2, 1)), # predicted time of completion
+                predicted = array(data = 0, c(6, 1)), # predicted time of completion
                 start = 0e0, # timer
                 expired = 0e0, # expired time
                 prediction = 0e0 # final prediction
@@ -228,7 +237,7 @@ estatusbar.polynomial <- function(private, frac, win) {
     pdf$times <- predict(fit, pdf)
     # if the prediction is still negative, set to 0
     if (pdf$times[1] < 0) {
-      pdf$times <- 0
+      pdf$times <- c(0)
     }
   }
 
@@ -274,4 +283,19 @@ estatusbar.log <- function(private, frac, win) {
   pdf$times <- predict(fit, pdf)
   
   return(exp(pdf$times[1]))
+}
+
+# This simple estimator takes the last known entry and assumes that the time increases as a power of fraction:
+# time(frac) = tot * frac^expo
+#
+# where tot is the total time estimated by substituting the data for the last entry into the previous equation:
+# tot = time(last) / frac(last)^expo
+estatusbar.first.last <- function(private, frac, expo, smallf = 1e-10) {
+  num.entries <- length(private$fracs)
+  
+  # Estimate the total time (use a small value to avoid division by zero)
+  tot <- private$expired / max(c(smallf, private$fracs[num.entries]))^expo
+  
+  # Return the prediction for frac
+  return(tot * frac^expo)
 }
