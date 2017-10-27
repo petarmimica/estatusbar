@@ -45,7 +45,7 @@ estatusbar <-
                 },
                 add = function(fraction) {
                     # hard coded number of algorithms
-                    num.algs <- 6
+                    num.algs <- 4
 
                     # get current time
                     cur <- as.numeric(lubridate::now())
@@ -59,33 +59,44 @@ estatusbar <-
                         new.pred <- array(data = 0, c(num.algs, 1))
                         new.pred[1, 1] <- estatusbar.polynomial(private, fraction, private$win.size)
                         new.pred[2, 1] <- estatusbar.log(private, fraction, private$win.size)
-                        new.pred[3, 1] <- estatusbar.polynomial(private, fraction, num.entries)
-                        new.pred[4, 1] <- estatusbar.log(private, fraction, num.entries)
-                        new.pred[5, 1] <- estatusbar.first.last(private, fraction, 1)
-                        new.pred[6, 1] <- estatusbar.first.last(private, fraction, 2)
+                        new.pred[3, 1] <- estatusbar.first.last(private, fraction, 1)
+                        new.pred[4, 1] <- estatusbar.first.last(private, fraction, 2)
                         
 
                         private$predicted <- cbind(private$predicted, new.pred)
                         
                         # define the interval where the algorithms are tested
+                        #test.int <- max(c(1, num.entries - private$win.size)):num.entries
                         test.int <- 1:num.entries
                         
                         # compute the sum of square difference for each algorithm
                         private$sqdiff <- sapply(1:num.algs, function(i) {
-                            1e0 / max(c(sum((private$measured[test.int] - private$predicted[i, test.int])^2), 1e-10))
+                            1e0 / (max(c(sum((private$measured[1:num.entries] - private$predicted[i, 1:num.entries])^2), 1e-10)))^2 +  1e0 * (num.entries - max(c(1, num.entries - private$win.size)) +1) / num.entries / (max(c(sum((private$measured[max(c(1, num.entries - private$win.size)):num.entries] - private$predicted[i, max(c(1, num.entries - private$win.size)):num.entries])^2), 1e-10)))^2 + 1e0 / num.entries / max(c((private$measured[num.entries] - private$predicted[i, num.entries])^2, 1e-10))^2
                         })
+                        
+                        w.win <- sapply(1:num.algs, function(i) {
+                          1e0/ (max(c(sum((private$measured[max(c(1, num.entries - private$win.size)):num.entries] - private$predicted[i, max(c(1, num.entries - private$win.size)):num.entries])^2), 1e-10)))^2
+                        })
+                        
+                        w.last <- sapply(1:num.algs, function(i) {
+                          1e0 / max(c((private$measured[num.entries] - private$predicted[i, num.entries])^2, 1e-10))^2
+                        })
+                        
+                        weights <- 10e0 * private$sqdiff / sum(private$sqdiff) + 4e0 * w.win / sum(w.win) + 0.1e0 * w.last / sum(w.last)
+                        weights <- weights / sum(weights)
 
                         # compute the final predictions
                         final.pred <- array(data = 0, c(num.algs))
                         final.pred[1] <- estatusbar.polynomial(private, 1e0, private$win.size)
                         final.pred[2] <- estatusbar.log(private, 1e0, private$win.size)
-                        final.pred[3] <- estatusbar.polynomial(private, 1e0, num.entries)
-                        final.pred[4] <- estatusbar.log(private, 1e0, num.entries)
-                        final.pred[5] <- estatusbar.first.last(private, 1e0, 1)
-                        final.pred[6] <- estatusbar.first.last(private, 1e0, 2)
-
-                        # compute the average prediction, using sqdiff as weights
-                        private$prediction <- sum(private$sqdiff * final.pred) / sum(private$sqdiff)
+                        final.pred[3] <- estatusbar.first.last(private, 1e0, 1)
+                        final.pred[4] <- estatusbar.first.last(private, 1e0, 2)
+                        
+                        private$prediction <- sum(weights * final.pred) / sum(weights)
+                        cat("\n")
+                        cat(weights / sum(weights))
+                        cat("\n")
+                        #private$prediction <- final.pred[which.max(private$sqdiff)]
 
                     }
 
@@ -186,9 +197,9 @@ estatusbar <-
             private = list (
                 win.size = 5, # the fitting window
                 fracs = 0e0, # fraction of work done vector
-                sqdiff = array(data = 0, c(6, 1)), # square of prediction differences
+                sqdiff = array(data = 0, c(4, 1)), # square of prediction differences
                 measured = 0e0, # measured time
-                predicted = array(data = 0, c(6, 1)), # predicted time of completion
+                predicted = array(data = 0, c(4, 1)), # predicted time of completion
                 start = 0e0, # timer
                 expired = 0e0, # expired time
                 prediction = 0e0 # final prediction
@@ -294,7 +305,7 @@ estatusbar.first.last <- function(private, frac, expo, smallf = 1e-10) {
   num.entries <- length(private$fracs)
   
   # Estimate the total time (use a small value to avoid division by zero)
-  tot <- private$expired / max(c(smallf, private$fracs[num.entries]))^expo
+  tot <- private$measured[num.entries] / max(c(smallf, private$fracs[num.entries]))^expo
   
   # Return the prediction for frac
   return(tot * frac^expo)
