@@ -93,11 +93,7 @@ estatusbar <-
                         final.pred[4] <- estatusbar.first.last(private, 1e0, 2)
                         
                         private$prediction <- sum(weights * final.pred) / sum(weights)
-                        cat("\n")
-                        cat(weights / sum(weights))
-                        cat("\n")
-                        #private$prediction <- final.pred[which.max(private$sqdiff)]
-
+                       
                     }
 
                     # add new entry
