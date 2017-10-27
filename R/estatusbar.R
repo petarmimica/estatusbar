@@ -45,7 +45,7 @@ estatusbar <-
                 },
                 add = function(fraction) {
                     # hard coded number of algorithms
-                    num.algs <- 4
+                    num.algs <- 6
 
                     # get current time
                     cur <- as.numeric(lubridate::now())
