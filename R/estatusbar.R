@@ -70,19 +70,11 @@ estatusbar <-
                         test.int <- 1:num.entries
                         
                         # compute the sum of square difference for each algorithm
-                        private$sqdiff <- sapply(1:num.algs, function(i) {
-                            1e0 / (max(c(sum((private$measured[1:num.entries] - private$predicted[i, 1:num.entries])^2), 1e-10)))^2 +  1e0 * (num.entries - max(c(1, num.entries - private$win.size)) +1) / num.entries / (max(c(sum((private$measured[max(c(1, num.entries - private$win.size)):num.entries] - private$predicted[i, max(c(1, num.entries - private$win.size)):num.entries])^2), 1e-10)))^2 + 1e0 / num.entries / max(c((private$measured[num.entries] - private$predicted[i, num.entries])^2, 1e-10))^2
-                        })
-                        
-                        w.win <- sapply(1:num.algs, function(i) {
-                          1e0/ (max(c(sum((private$measured[max(c(1, num.entries - private$win.size)):num.entries] - private$predicted[i, max(c(1, num.entries - private$win.size)):num.entries])^2), 1e-10)))^2
-                        })
-                        
                         w.last <- sapply(1:num.algs, function(i) {
                           1e0 / max(c((private$measured[num.entries] - private$predicted[i, num.entries])^2, 1e-10))^2
                         })
                         
-                        weights <- 10e0 * private$sqdiff / sum(private$sqdiff) + 4e0 * w.win / sum(w.win) + 0.1e0 * w.last / sum(w.last)
+                        weights <- w.last / sum(w.last)
                         weights <- weights / sum(weights)
 
                         # compute the final predictions
@@ -93,6 +85,8 @@ estatusbar <-
                         final.pred[4] <- estatusbar.first.last(private, 1e0, 2)
                         
                         private$prediction <- sum(weights * final.pred) / sum(weights)
+                        private$win.alg <- which.max(weights)
+#                        private$prediction <- final.pred[private$win.alg]
                        
                     }
 
@@ -108,7 +102,7 @@ estatusbar <-
                 },
                 predict = function() {
                     Sys.setenv(TZ="Europe/Madrid")
-                    return(as.POSIXct(private$prediction + private$start, origin=lubridate::origin))
+                    return(paste0("[", private$win.alg, "] ", as.POSIXct(private$prediction + private$start, origin=lubridate::origin)))
                 },
                 display = function(width = 40, text = NULL, perc = TRUE, eta = TRUE, digits=0) {
                     # Set the digits for fractions of a second
@@ -198,7 +192,8 @@ estatusbar <-
                 predicted = array(data = 0, c(4, 1)), # predicted time of completion
                 start = 0e0, # timer
                 expired = 0e0, # expired time
-                prediction = 0e0 # final prediction
+                prediction = 0e0, # final prediction
+                win.alg = 1 # winning algorithm
             )
 
     )
