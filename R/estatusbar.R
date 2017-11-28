@@ -18,6 +18,7 @@
 #' \item{eta}{Estimated completion time display flag, by default set to TRUE. This controls whether the ETA should be printed.}
 #' \item{digits}{Total number of digits to be used when printing seconds, by default set to 0. This allows the user to show fractions of a second.}
 #' }
+#' This function also returns the display text as a string. Therefore, to avoid double printing, its results should be assigned to a variable.
 #'
 #' @export
 #'
@@ -167,19 +168,24 @@ estatusbar <-
 
 
                     # Print the final result
+                    ostr <- bar.string
                     cat(bar.string)
 
                     if (!is.null(text)) {
                         cat(paste0(" ", text))
+                        ostr <- paste0(ostr, text)
                     }
 
                     if (perc) {
                         cat(perc.string)
+                        ostr <- paste0(ostr, perc.string)
                     }
 
                     if (eta) {
                         cat(pred)
+                        ostr <- paste0(ostr, pred)
                     }
+                    return(ostr)
                 }
 
             ),
