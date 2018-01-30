@@ -3,7 +3,7 @@
 #' This is an R port of a Fortran module that was used in the astrophysical codes SPEV and MRGENESIS.
 #'
 #' @section Initialization:
-#' An R6 object is initalized sing \code{estatusbar$new()} with an optional argument - the size of the fittng window. It should be called by the user when the task starts.
+#' An R6 object is initalized sing \code{estatusbar$new()} with two optional arguments - the size of the fittng window (5 by default), and whether the prediction is done by winner-take-all approach (default) or by weighting the predictions of all algorithms. It should be called by the user when the task starts.
 #'
 #' @section Adding new entries:
 #' As the task progresses, the user can call the function \code{add} to register the fraction of the task that has been completed. The routine \code{add} has only one argument, the fraction (between 0 and 1) that is complete at current time.
@@ -40,8 +40,9 @@ estatusbar <-
 
             public = list (
 
-                initialize = function(win.size = 5) {
+                initialize = function(win.size = 5, weighted.pred = FALSE) {
                     private$win.size = win.size
+                    private$weighted.pred = weighted.pred
                     estatusbar.zero(self, private)
                 },
                 add = function(fraction) {
@@ -70,9 +71,9 @@ estatusbar <-
                         #test.int <- max(c(1, num.entries - private$win.size)):num.entries
                         test.int <- 1:num.entries
                         
-                        # compute the sum of square difference for each algorithm
+                        # compute the inverse of the sum of square difference for each algorithm for the last point
                         w.last <- sapply(1:num.algs, function(i) {
-                          1e0 / max(c((private$measured[num.entries] - private$predicted[i, num.entries])^2, 1e-10))^2
+                          1e0 / max(c((private$measured[num.entries] - private$predicted[i, num.entries]), 1e-10))
                         })
                         
                         weights <- w.last / sum(w.last)
@@ -85,10 +86,12 @@ estatusbar <-
                         final.pred[3] <- estatusbar.first.last(private, 1e0, 1)
                         final.pred[4] <- estatusbar.first.last(private, 1e0, 2)
                         
-                        private$prediction <- sum(weights * final.pred) / sum(weights)
-                        private$win.alg <- which.max(weights)
-#                        private$prediction <- final.pred[private$win.alg]
-                       
+                        if (private$weighted.pred) {
+                            private$prediction <- sum(weights * final.pred) / sum(weights)
+                        } else {
+                            private$win.alg <- which.max(weights)
+                            private$prediction <- final.pred[private$win.alg]
+                        }
                     }
 
                     # add new entry
@@ -192,6 +195,7 @@ estatusbar <-
 
             private = list (
                 win.size = 5, # the fitting window
+                weighted.pred = FALSE, # type of prediction
                 fracs = 0e0, # fraction of work done vector
                 sqdiff = array(data = 0, c(4, 1)), # square of prediction differences
                 measured = 0e0, # measured time
